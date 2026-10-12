@@ -1,0 +1,18 @@
+
+IF DB_ID(N'FundoSource') IS NULL
+BEGIN
+	CREATE DATABASE [FundoSource];
+END
+GO
+
+
+ALTER DATABASE [FundoSource] SET ALLOW_SNAPSHOT_ISOLATION ON;
+GO
+
+
+IF NOT EXISTS (SELECT 1 FROM sys.change_tracking_databases WHERE database_id = DB_ID(N'FundoSource'))
+BEGIN
+	ALTER DATABASE [FundoSource]
+	SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 7 DAYS, AUTO_CLEANUP = ON);
+END
+GO

@@ -88,6 +88,8 @@ def main():
             "AND c.CreatedAt < ?", TODAY, now)]
         for customer_id in random.sample(closable, min(3, len(closable))):
             cur.execute("DELETE FROM dbo.Customers WHERE CustomerId = ?", customer_id)
+            if customer_id in pool:
+                pool.remove(customer_id)  # a closed account gets no new advances, cards or transactions
             applied["Customers deleted"] += 1
 
         

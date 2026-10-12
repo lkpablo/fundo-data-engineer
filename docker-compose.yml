@@ -1,0 +1,47 @@
+
+# Local demo only: the sa password has a default so nothing needs to be set up first.
+# Override it with MSSQL_SA_PASSWORD=... if you like.
+
+x-sa-password: &sa-password ${MSSQL_SA_PASSWORD:-Fundo_Local_2026!}
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: *sa-password
+    ports:
+      - "14333:1433"   # optional: inspect the source from SSMS/DBeaver at localhost,14333
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -b -Q "SELECT 1" -o /dev/null
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  source-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      MSSQL_SA_PASSWORD: *sa-password
+    volumes:
+      - ./source:/source:ro
+    entrypoint: >
+      /bin/sh -c '/opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -P "$$MSSQL_SA_PASSWORD" -C -b
+      -i /source/00_create_database.sql,/source/01_schema.sql'
+    restart: "no"
+
+  pipeline:
+    build: .
+    profiles: ["manual"]   # not started by `up`: run it with `docker compose run --rm pipeline ...`
+    depends_on:
+      source-init:
+        condition: service_completed_successfully
+    environment:
+      SOURCE_ODBC: "DRIVER={ODBC Driver 18 for SQL Server};SERVER=sqlserver;DATABASE=FundoSource;UID=sa;PWD=${MSSQL_SA_PASSWORD:-Fundo_Local_2026!};TrustServerCertificate=yes;"
+    volumes:
+      - ./data:/app/data

@@ -296,7 +296,9 @@ def main():
     conn = pyodbc.connect(CONN_STR, autocommit=False)
     cur = conn.cursor()
     if cur.execute("SELECT COUNT(*) FROM dbo.Customers").fetchone()[0] > 0:
-        raise SystemExit("FundoSource already has data. Recreate it with source/00 and source/01 before seeding.")
+        conn.close()
+        print("FundoSource already has data: seed skipped.")
+        return
 
     try:
         customers = build_customers()
